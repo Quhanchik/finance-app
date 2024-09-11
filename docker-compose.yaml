@@ -1,0 +1,36 @@
+version: '3'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/finance-app
+  frontend:
+    build: ./frontend/.
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - VITE_BACKEND_URL_BASE=http://backend:8080
+    networks:
+      - mynetwork
+  db:
+    image: postgres:13.3
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=19283746511
+      - POSTGRES_DB=finance-app
+    ports:
+      - "5432:5432"
+    networks:
+      - mynetwork
+
+networks:
+  mynetwork:
+    driver: bridge
+
