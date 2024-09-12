@@ -10,7 +10,7 @@ import lombok.*;
 import java.util.List;
 
 @Entity
-@Table(schema = "public", name = "t_user")
+@Table(name = "t_user", schema = "finance_app")
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter

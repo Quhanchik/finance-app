@@ -51,7 +51,7 @@ export default function LoginPage() {
           <h2 className="text-3xl font-bold tracking-tight text-foreground">Sign in to your account</h2>
           <p className="mt-2 text-muted-foreground">
             Don&apos;t have an account?{" "}
-            <Link to='/register' className="font-medium text-primary hover:underline">
+            <Link to='/registration' className="font-medium text-primary hover:underline">
               Register
             </Link>
           </p>

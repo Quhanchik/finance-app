@@ -8,7 +8,10 @@ services:
     depends_on:
       - db
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/finance-app
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/finance_app
+    networks:
+      - mynetwork
+
   frontend:
     build: ./frontend/.
     ports:
@@ -20,13 +23,11 @@ services:
     networks:
       - mynetwork
   db:
-    image: postgres:13.3
+    image: postgres:13-alpine
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=19283746511
-      - POSTGRES_DB=finance-app
-    ports:
-      - "5432:5432"
+      - POSTGRES_DB=finance_app
     networks:
       - mynetwork
 

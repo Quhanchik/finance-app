@@ -13,8 +13,8 @@ import java.util.List;
 
 @Repository
 public interface BillRepository extends JpaRepository<Bill, Integer> {
-    @Query(value = "SELECT b.* FROM t_bill b JOIN public.t_user_bill AS tub ON b.id = tub.bill_id where user_id = :userId",
-            countQuery = "SELECT count(b.*) FROM t_bill b JOIN public.t_user_bill AS tub ON b.id = tub.bill_id where user_id = :userId",
+    @Query(value = "SELECT b.* FROM finance_app.t_bill b JOIN finance_app.t_user_bill AS tub ON b.id = tub.bill_id where user_id = :userId",
+            countQuery = "SELECT count(b.*) FROM finance_app.t_bill b JOIN finance_app.t_user_bill AS tub ON b.id = tub.bill_id where user_id = :userId",
             nativeQuery = true)
     Page<Bill> gettingBillsByUserId(@Param("userId") Integer userId, Pageable pageable);
 }
