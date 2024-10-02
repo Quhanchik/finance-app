@@ -1,21 +1,19 @@
 package kz.quhan.finance_app.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
-import kz.quhan.finance_app.dto.BillWithCreatorAndMembersDTO;
+import kz.quhan.finance_app.dto.FullBillDTO;
 import kz.quhan.finance_app.dto.JoinToken;
 import kz.quhan.finance_app.entity.AppUser;
 import kz.quhan.finance_app.entity.Bill;
-import kz.quhan.finance_app.repository.AppUserRepository;
+import kz.quhan.finance_app.exception.ApplicationAccessDeniedException;
+import kz.quhan.finance_app.exception.BillException;
+import kz.quhan.finance_app.mapper.BillMapper;
 import kz.quhan.finance_app.repository.BillRepository;
 import kz.quhan.finance_app.utils.JWTUtils;
-import kz.quhan.finance_app.utils.NoSuchBillException;
-import kz.quhan.finance_app.utils.UserInBillDoesntExistException;
-import kz.quhan.finance_app.utils.UserInBillExistException;
 import lombok.RequiredArgsConstructor;
-import org.hibernate.Hibernate;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -29,24 +27,27 @@ import java.util.Optional;
 @Service
 public class BillService {
     private final BillRepository billRepository;
-    private final AppUserRepository appUserRepository;
     private final AppUserService appUserService;
-    private final ObjectMapper mapper;
+    private final BillMapper billMapper;
     private final JWTUtils jwtUtils;
 
-    public Page<Bill> getBillsByUserId(Integer id, Pageable pageable) {
-        return billRepository.gettingBillsByUserId(id, pageable);
+    public Page<Bill> getBillsByUserId(String login, Pageable pageable) {
+        return billRepository.getBillsByCreatorLogin(login, pageable);
     }
 
     @Transactional
-    public Page<BillWithCreatorAndMembersDTO> getBillsWithCreatorAndMembersByUserId(Integer id, Pageable pageable) {
-        Page<Bill> billPage = getBillsByUserId(id, pageable);
+    public Page<FullBillDTO> getBills(String userLogin, Integer page, Integer size) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<Bill> billPage = getBillsByUserId(userLogin, pageable);
 
         billPage.forEach(bill -> {
             bill.getMembers().size();
         });
 
-        return billPage.map(this::billToBillWithCreatorAndMembersDTO);
+        List<FullBillDTO> fullBillDTOs = billMapper.toFullBillDTOs(billPage.getContent());
+
+        return new PageImpl<>(fullBillDTOs, pageable, billPage.getTotalElements());
     }
 
     public void save(Bill bill) {
@@ -57,8 +58,9 @@ public class BillService {
         return billRepository.findAll(pageable);
     }
 
-    public Optional<Bill> getOne(Integer id) {
-        return billRepository.findById(id);
+    public Bill getOne(Integer id) {
+        return billRepository.findById(id)
+                .orElseThrow(() -> new BillException("bill with this id doesn't exist"));
     }
 
     public List<Bill> getMany(Collection<Integer> ids) {
@@ -66,9 +68,16 @@ public class BillService {
     }
 
     public Bill create(Bill bill) {
+        System.out.println(bill.getName());
+        Optional<Bill> billByName = billRepository.getBillByName(bill.getName());
+
+        if(billByName.isPresent()) {
+            throw new BillException("bill with this name is already exist");
+        }
+
         var context = SecurityContextHolder.getContext().getAuthentication();
 
-        AppUser creator = appUserService.getOne(Integer.parseInt(context.getName())).get();
+        AppUser creator = appUserService.getAppUserByLogin(context.getName());
 
         List<AppUser> members = new ArrayList<>();
         members.add(creator);
@@ -79,73 +88,96 @@ public class BillService {
         return billRepository.save(bill);
     }
 
-    public Bill patch(Bill id, JsonNode patchNode) {
-        return billRepository.save(id);
+    public void delete(Integer id) {
+        Optional<Bill> billoptional = billRepository.findById(id);
+
+        if(billoptional.isEmpty()) {
+            throw new BillException("bill with this id doesn't exist");
+        }
+
+        String userLogin = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        Bill billFromDB = billoptional.get();
+
+        Optional<AppUser> isMember = billFromDB.getMembers().stream()
+                .filter(member -> member.getLogin().equals(userLogin))
+                .findAny();
+
+        if(isMember.isPresent()) {
+            billRepository.deleteById(id);
+        } else {
+            throw new ApplicationAccessDeniedException("you can't delete this bill");
+        }
     }
 
-    public List<Bill> patchMany(Collection<Bill> ids, JsonNode patchNode) {
-        return billRepository.saveAll(ids);
-    }
-
-    public void delete(Bill id) {
-        billRepository.delete(id);
-    }
-
-    public void deleteMany(Collection<Integer> ids) {
-        billRepository.deleteAllById(ids);
-    }
-
-    public BillWithCreatorAndMembersDTO billToBillWithCreatorAndMembersDTO(Bill bill) {
-        return mapper.convertValue(bill, BillWithCreatorAndMembersDTO.class);
-    }
-
-    public Optional<JoinToken> generateJoinToken(Integer billId) {
+    public JoinToken generateJoinToken(Integer billId) {
         Optional<Bill> billOptional = billRepository.findById(billId);
 
         if(billOptional.isPresent()) {
             Bill bill = billOptional.get();
-            Integer currentUserId = Integer.valueOf(SecurityContextHolder.getContext().getAuthentication().getName());
-//            AppUser currentUser = appUserService.getOne(currentUserId).get();
+
+            String userLogin = SecurityContextHolder.getContext().getAuthentication().getName();
 
             Optional<AppUser> userInBillOptional = bill.getMembers()
                     .stream()
-                    .filter(member -> member.getId().equals(currentUserId))
+                    .filter(member -> member.getLogin().equals(userLogin))
                     .findAny();
 
             if(userInBillOptional.isPresent()) {
                 String token = jwtUtils.generateJoinToken(billId);
 
-                return Optional.of(new JoinToken(token));
+                return new JoinToken(token);
             } else {
-                throw new UserInBillDoesntExistException();
+                throw new ApplicationAccessDeniedException("you don't have access to this bill");
             }
         } else {
-            return Optional.empty();
+            throw new BillException("bill with this id doesn't exist");
         }
     }
 
     @Transactional
-    public void validateAndJoinToBill(String joinToken) throws UserInBillExistException, NoSuchBillException {
+    public void validateAndJoinToBill(String joinToken) {
         String id = jwtUtils.validateJoinTokenAndRetrieveBillId(joinToken);
 
         Optional<Bill> billOptional = billRepository.findById(Integer.parseInt(id));
 
         if(billOptional.isPresent()) {
             Bill bill = billOptional.get();
-            AppUser appUser = appUserService.getOne(Integer.parseInt(SecurityContextHolder.getContext().getAuthentication().getName())).get();
+            String userLogin = SecurityContextHolder.getContext().getAuthentication().getName();
+
+            AppUser appUser = appUserService.getAppUserByLogin(userLogin);
 
             Optional<AppUser> userInBill = bill.getMembers()
                     .stream()
-                    .filter(user -> user.getId().equals(appUser.getId()))
+                    .filter(user -> user.getLogin().equals(userLogin))
                     .findAny();
 
             if(userInBill.isEmpty()) {
                 bill.getMembers().add(appUser);
             } else {
-                throw new UserInBillExistException();
+                throw new BillException("user in this bill is already stays");
             }
         } else {
-            throw new NoSuchBillException();
+            throw new BillException("bill with this id doesn't exist");
+        }
+    }
+
+    public Bill getOneThatMine(Integer id) {
+        Optional<Bill> billOptional = billRepository.findById(id);
+        String userLogin = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        if(billOptional.isPresent()) {
+            Bill bill = billOptional.get();
+
+            Optional<AppUser> isMember = bill.getMembers().stream().filter(member -> member.getLogin().equals(userLogin)).findAny();
+
+            if(isMember.isPresent()) {
+                return bill;
+            } else {
+                throw new ApplicationAccessDeniedException("you can't access to this bill");
+            }
+        } else {
+            throw new BillException("bill with this id doesn't exist");
         }
     }
 }

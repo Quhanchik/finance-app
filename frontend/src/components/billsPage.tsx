@@ -11,6 +11,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/card"
 import { Dialog, DialogContent } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "./ui/pagination";
+import { set } from "date-fns";
 
 export default function BillsPage() {
     const [searchParams, setSerachParams] = useSearchParams();
@@ -21,17 +22,21 @@ export default function BillsPage() {
     const [createDescription, setCreateDescription] = useState<string>('');
     const [createTotalMoney, setCreateTotalMoney] = useState<number>(0);
 
+    const [isDeleteBillModalOpen, setIsDeleteBillModalOpen] = useState(false);
+
     const [joinToken, setJoinToken] = useState<string>('');
 
     const navigate = useNavigate();
 
     const BACKEND_URL_BASE = import.meta.env.VITE_BACKEND_URL_BASE
 
+    const [currentBillId, setCurrentBillId] = useState<number>();
+
     useEffect(() => {
         searchParams.set('page', page.toString());
         setSerachParams(searchParams);
 
-        fetch(BACKEND_URL_BASE + '/bill?page=' + (page - 1) + '&size=' + size, {
+        fetch(BACKEND_URL_BASE + '/bills?page=' + (page - 1) + '&size=' + size, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -52,12 +57,11 @@ export default function BillsPage() {
         if(paginatedBills) { 
             const renderedBills = paginatedBills.content.map(bill => {
                 return (
-                    <Link to={`/bills/${bill.id}`} key={bill.id}>
-                        <Card className="max-w-200 hover:cursor-pointer hover:scale-105 duration-150">
-                            <CardHeader>
+                        <Card id={bill.id.toString()} className="hover:cursor-pointer hover:scale-105 duration-150">
+                            <CardHeader onClick={() => navigate(`/bills/${bill.id}`)} >
                                 <CardTitle>{bill.name}</CardTitle>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent   onClick={() => navigate(`/bills/${bill.id}`)} >
                                 <div className={`text-3xl ${Number(bill?.totalMoney) < 0 ? 'text-red-500' : 'text-green-500'}`}>{`$${bill.totalMoney}`}</div>
                             </CardContent>
                             <CardFooter  className="flex items-center justify-between">
@@ -67,14 +71,13 @@ export default function BillsPage() {
                                     </div> 
                                     <Eye className="h-5 w-5 mt-1"/>
                                 </div>
-                                <Button className="ml-4">edit bill</Button>
+                                <Button id={bill.id.toString()} variant="destructive" onClick={() => {setIsDeleteBillModalOpen(true); setCurrentBillId(bill.id)}} className="ml-4 z-99">delete bill</Button>
                             </CardFooter>
                         </Card>
-                    </Link>
                 )
             })
 
-            return <div className="grid grid-cols-5 gap-4">
+            return <div className="grid gap-4 xl:grid-cols-4 lg:grid-cols-3 md:grid-cols-2">
                 {renderedBills}
             </div>
         }
@@ -83,7 +86,7 @@ export default function BillsPage() {
     const onCreateSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        fetch(BACKEND_URL_BASE + '/bill', {
+        fetch(BACKEND_URL_BASE + '/bills', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -106,7 +109,7 @@ export default function BillsPage() {
     const onJoinSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        fetch(BACKEND_URL_BASE + `/bill/join-token`, {
+        fetch(BACKEND_URL_BASE + `/bills/join-token`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -117,6 +120,24 @@ export default function BillsPage() {
             })
         }).then(res => {
             if(res.status === 201) {
+                navigate(0);
+            } else {
+                console.log('error');
+            }
+        })
+    }
+
+    const deleteBill = (e) => {
+        e.preventDefault();
+
+        fetch(BACKEND_URL_BASE + `/bills/${currentBillId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + Cookies.get('token')
+            }
+        }).then(res => {
+            if(res.status === 200) {
                 navigate(0);
             } else {
                 console.log('error');
@@ -154,9 +175,18 @@ export default function BillsPage() {
                                 </form>
                             </DialogContent>
                         </Dialog>
+                        <Dialog open={isDeleteBillModalOpen} onOpenChange={setIsDeleteBillModalOpen}>
+                            <DialogContent>
+                                <div>Are you sure that you want to delete this bill?</div>
+                                <div className="mt-5 flex justify-end gap-2">
+                                    <Button variant="outline" onClick={() => setIsDeleteBillModalOpen(false)}>Close</Button>
+                                    <Button className="bg-red-500" onClick={deleteBill}>delete</Button>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                 </div>
-                <div className="grid justify-start gap-6 grid-flow-col">
+                <div >
                     {renderListOfBills()}
                 </div>
             </div>

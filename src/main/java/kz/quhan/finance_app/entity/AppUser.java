@@ -13,6 +13,7 @@ import java.util.List;
 @Table(name = "t_user", schema = "finance_app")
 @AllArgsConstructor
 @NoArgsConstructor
+@Builder
 @Getter
 @Setter
 public class AppUser {

@@ -1,4 +1,4 @@
-version: '3'
+version: '3.8'
 
 services:
   backend:
@@ -8,7 +8,9 @@ services:
     depends_on:
       - db
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/finance_app
+      - DB_URL=jdbc:postgresql://db:5432/finance_app
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=19283746511
     networks:
       - mynetwork
 
@@ -18,8 +20,6 @@ services:
       - "80:80"
     depends_on:
       - backend
-    environment:
-      - VITE_BACKEND_URL_BASE=http://backend:8080
     networks:
       - mynetwork
   db:

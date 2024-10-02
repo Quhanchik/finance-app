@@ -14,7 +14,7 @@ import java.util.Date;
 @NoArgsConstructor
 @Data
 //@JsonIgnoreProperties(ignoreUnknown = true)
-public class FinanceUnitWithCategoryAndCreatorAndBillDTO {
+public class FullFinanceUnitDTO {
     Integer id;
     Boolean isProfit;
     Double money;

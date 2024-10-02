@@ -1,6 +1,7 @@
 package kz.quhan.finance_app.service;
 
 import kz.quhan.finance_app.entity.AppUser;
+import kz.quhan.finance_app.exception.AppUserException;
 import kz.quhan.finance_app.repository.AppUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,12 +25,14 @@ public class AppUserService {
         return appUserRepository.findAll(pageable);
     }
 
-    public Optional<AppUser> getOne(Integer id) {
-        return appUserRepository.findById(id);
+    public AppUser getOne(Integer id) {
+        return appUserRepository.findById(id)
+                .orElseThrow(() -> new AppUserException("user with this id does not found"));
     }
 
-    public Optional<AppUser> getAppUserByLogin(String login) {
-        return appUserRepository.getAppUsersByLogin(login);
+    public AppUser getAppUserByLogin(String login) {
+        return appUserRepository.getAppUsersByLogin(login)
+                .orElseThrow(() -> new AppUserException("user with this login doesn't exist"));
     }
 
     public List<AppUser> getMany(Collection<Integer> ids) {
@@ -37,7 +40,14 @@ public class AppUserService {
     }
 
     public AppUser create(AppUser appUser) {
-        return appUserRepository.save(appUser);
+        Optional<AppUser> appUserFromDB = appUserRepository.getAppUsersByLogin(appUser.getLogin());
+
+        if(appUserFromDB.isPresent()) {
+            return appUserRepository.save(appUser);
+        } else {
+            throw new AppUserException("user with this id is already exist");
+        }
+
     }
 
     public AppUser patch(AppUser id) {
@@ -48,8 +58,18 @@ public class AppUserService {
         return appUserRepository.saveAll(ids);
     }
 
-    public void delete(AppUser id) {
-        appUserRepository.delete(id);
+    public void delete(Integer id) {
+        Optional<AppUser> appUser = appUserRepository.findById(id);
+
+        if(appUser.isEmpty()) {
+            throw new AppUserException("user with this id doesn't exist");
+        }
+
+        appUserRepository.delete(
+                AppUser.builder()
+                .id(id)
+                .build()
+        );
     }
 
     public void deleteMany(Collection<Integer> ids) {

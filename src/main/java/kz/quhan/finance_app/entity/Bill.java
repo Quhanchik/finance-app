@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Fetch;
 
 import java.util.List;
 
@@ -22,10 +23,10 @@ public class Bill {
     private Integer id;
 
     @Column(name = "c_name", nullable = false, length = Integer.MAX_VALUE)
-    private String Name;
+    private String name;
 
     @Column(name = "c_description", nullable = false, length = Integer.MAX_VALUE)
-    private String Description;
+    private String description;
 
     @Column(name = "c_total_money")
     private Double totalMoney;
@@ -45,4 +46,7 @@ public class Bill {
             joinColumns = @JoinColumn(name = "bill_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id"))
     private List<AppUser> members;
+
+    @OneToMany(mappedBy = "bill", cascade = CascadeType.REMOVE)
+    private List<FinanceUnit> financeUnits;
 }

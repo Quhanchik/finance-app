@@ -24,11 +24,19 @@ export default function Header() {
               <MountainIcon className="h-6 w-6" />
               <span className="text-lg font-semibold">Finance Manager</span>
             </div>
+            <div className="flex gap-2 align-middle justify-center">
+              {
+                isAuth ?
+                <div>
+                  <Button><Link to="/bills">bills</Link></Button>
+                </div> :
+                <></>
+              }
               <div>
                   {
                     isAuth ?
                     <DropdownMenu>
-                      <DropdownMenuTrigger>
+                      <DropdownMenuTrigger className="items-center p-2">
                         {JSON.parse(window.localStorage.getItem('user')).login}
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
@@ -43,6 +51,7 @@ export default function Header() {
                     </div>
                   }
               </div>
+            </div>
           </header>
     )
 }

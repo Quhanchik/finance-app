@@ -3,7 +3,6 @@ package kz.quhan.finance_app.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Value;
 
 import java.io.Serializable;
 import java.util.List;
@@ -14,10 +13,10 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-public class BillWithCreatorAndMembersDTO implements Serializable {
+public class FullBillDTO implements Serializable {
     Integer id;
-    String Name;
-    String Description;
+    String name;
+    String description;
     Double totalMoney;
     Double totalIncome;
     Double totalExpenses;

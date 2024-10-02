@@ -2,6 +2,7 @@ package kz.quhan.finance_app.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import kz.quhan.finance_app.entity.Category;
+import kz.quhan.finance_app.exception.CategoryException;
 import kz.quhan.finance_app.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -21,8 +22,9 @@ public class CategoryService {
         return categoryRepository.findAll();
     }
 
-    public Optional<Category> getOne(Integer id) {
-        return categoryRepository.findById(id);
+    public Category getOne(Integer id) {
+        return categoryRepository.findById(id)
+                .orElseThrow(() -> new CategoryException("categiry with this id doesn't exist"));
     }
 
     public List<Category> getMany(Collection<Integer> ids) {

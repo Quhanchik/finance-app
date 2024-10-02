@@ -10,11 +10,13 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface BillRepository extends JpaRepository<Bill, Integer> {
-    @Query(value = "SELECT b.* FROM finance_app.t_bill b JOIN finance_app.t_user_bill AS tub ON b.id = tub.bill_id where user_id = :userId",
-            countQuery = "SELECT count(b.*) FROM finance_app.t_bill b JOIN finance_app.t_user_bill AS tub ON b.id = tub.bill_id where user_id = :userId",
-            nativeQuery = true)
-    Page<Bill> gettingBillsByUserId(@Param("userId") Integer userId, Pageable pageable);
+
+
+    Page<Bill> getBillsByCreatorLogin(String userLogin, Pageable pageable);
+
+    Optional<Bill> getBillByName(String name);
 }

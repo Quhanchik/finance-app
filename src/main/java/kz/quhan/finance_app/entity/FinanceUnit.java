@@ -47,9 +47,7 @@ public class FinanceUnit {
     @JoinColumn(name = "category_id")
     private Category category;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.REMOVE)
     @JoinColumn(name = "bill_id")
     private Bill bill;
-
-
 }

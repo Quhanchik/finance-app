@@ -1,4 +1,4 @@
-import { CalendarClockIcon, CheckCheckIcon, FilePenIcon, FileQuestionIcon, FilesIcon, MountainIcon, PlusIcon, SearchIcon, TagIcon, Trash2Icon, UserIcon } from "lucide-react"
+import { CalendarClockIcon, CheckCheckIcon, EditIcon, FilePenIcon, FileQuestionIcon, FilesIcon, MountainIcon, PlusIcon, SearchIcon, TagIcon, Trash2Icon, UserIcon } from "lucide-react"
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "./ui/dropdown-menu"
 import { Button } from "./ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card"
@@ -57,6 +57,19 @@ export default function ReportsPage() {
 
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingReportId, setEditingReportId] = useState<number | undefined>();
+
+    const [editedDate, setEditedDate] = useState<Date | undefined>(new Date());
+    const [editedDescription, setEditedDescription] = useState<string>('');
+    const [editedMoney, setEditedMoney] = useState<string>('');
+    const [editedCategory, setEditedCategory] = useState<string>('');
+    const [editedIsProfit, setEditedIsProfit] = useState<boolean>(false);
+
+    const [createAFinanceUnitLoading, setCreateAFinanceUnitLoading] = useState(false);
+    const [deleteAFinanceUnitLoading, setDeleteAFinanceUnitLoading] = useState(false);
+    const [editAFinanceUnitLoading, setEditAFinanceUnitLoading] = useState(false);
+
     const BACKEND_URL_BASE = import.meta.env.VITE_BACKEND_URL_BASE 
 
     const formatter = new Intl.NumberFormat('ru-KZ', {
@@ -68,7 +81,7 @@ export default function ReportsPage() {
       searchParams.set('page', page.toString());
       setSerachParams(searchParams);
 
-        fetch(BACKEND_URL_BASE + `/bill/join-token/${billId}`, {
+        fetch(BACKEND_URL_BASE + `/bills/join-token/${billId}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -83,9 +96,32 @@ export default function ReportsPage() {
         })
     }, [])
 
+    useEffect(() => {
+      if(!isEditModalOpen) {
+        return
+      }
+
+      fetch(BACKEND_URL_BASE + `/finance-units/${editingReportId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + Cookies.get('token')
+        }
+      }).then(res => {
+        if(res.status === 200) {
+          res.json().then(data => {
+            setEditedDescription(data.description);
+            setEditedMoney(data.money);
+            setEditedCategory(data.category.id);
+            setEditedIsProfit(data.isProfit);
+          })
+        }
+      })
+    }, [isEditModalOpen])
+
 
     useEffect(() => {
-        fetch(BACKEND_URL_BASE + `/bill/${billId}`, {
+        fetch(BACKEND_URL_BASE + `/bills/${billId}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -101,7 +137,7 @@ export default function ReportsPage() {
       }, [])
 
       useEffect(() => {
-        fetch(BACKEND_URL_BASE + '/category', {
+        fetch(BACKEND_URL_BASE + '/categories', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -118,7 +154,7 @@ export default function ReportsPage() {
 
       useEffect(() => {
 
-        fetch(BACKEND_URL_BASE + `/finance-unit/bill/${billId}?&` + 
+        fetch(BACKEND_URL_BASE + `/finance-units/bill/${billId}?&` + 
           `&page=${page - 1}` +
           `&size=${size}`, {
           method: 'GET',
@@ -152,7 +188,7 @@ export default function ReportsPage() {
         // }
         
 
-        fetch(BACKEND_URL_BASE + `/finance-unit/bill/${billId}?&` + 
+        fetch(BACKEND_URL_BASE + `/finance-units/bill/${billId}?&` + 
           `&page=${page - 1}` +
           `&size=${size}` +
           `${filtrationCategory ? `&category=${filtrationCategory}` : ''}` +
@@ -177,10 +213,11 @@ export default function ReportsPage() {
       
 
       const onCreateAFinanceUnit = (e: React.FormEvent<HTMLFormElement>) => {
+        setCreateAFinanceUnitLoading(true);
         e.preventDefault();
         
 
-        fetch(BACKEND_URL_BASE + `/finance-unit`, {
+        fetch(BACKEND_URL_BASE + `/finance-units`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -204,13 +241,21 @@ export default function ReportsPage() {
         }).then(res => {
           if(res.status === 200) {
             navigate(0);
+          } else {
+            setCreateAFinanceUnitLoading(false);
+            console.log('error');
           }
         })
       }
 
       const makeDate = (date: Date) => {
         const dateObj = new Date(date);
-        return `${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()}`
+        return `${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()} ● ${dateObj.getHours()}:${dateObj.getMinutes()}`
+      }
+
+      const makeDateShort = (date: Date) => {
+        const dateObj = new Date(date);
+        return `${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()}`;
       }
 
       const makeMoneyStyled = (financeUnit: FinanceUnit) => {
@@ -223,8 +268,10 @@ export default function ReportsPage() {
       }
 
       const renderReports = () => {
-        if(!financeUnits) {
-          return <></>
+        if(!financeUnits || financeUnits?.content.length === 0) {
+          return <TableRow>
+            <TableCell colSpan={5} className="text-center font-bold">No data</TableCell>
+          </TableRow>
         }
         return financeUnits?.content.map((financeUnit, index) => {
           return (
@@ -236,7 +283,13 @@ export default function ReportsPage() {
               <TableCell>{financeUnit.creator.login}</TableCell>
               {
                 financeUnit.creator.login === JSON.parse(localStorage.getItem('user')!).login ? (
-                  <TableCell><Trash2Icon onClick={() => {setIsDeleteModalOpen(true); setDeletingReportId(financeUnit.id)}} className="w-6 h-6 cursor-pointer"/></TableCell>
+                  <TableCell className="w-10"><Trash2Icon onClick={() => {setIsDeleteModalOpen(true); setDeletingReportId(financeUnit.id)}} className="w-6 h-6 cursor-pointer"/></TableCell>
+                ) :
+                <></>
+              }
+              {
+                financeUnit.creator.login === JSON.parse(localStorage.getItem('user')!).login ? (
+                  <TableCell className="w-10"><EditIcon onClick={() => {setIsEditModalOpen(true); setEditingReportId(financeUnit.id)}} className="w-6 h-6 cursor-pointer"/></TableCell>
                 ) :
                 <></>
               }
@@ -325,7 +378,8 @@ export default function ReportsPage() {
     }
 
     const deleteReport = () => {
-      fetch(BACKEND_URL_BASE + `/finance-unit/${deletingReportId}`, {
+      setDeleteAFinanceUnitLoading(true);
+      fetch(BACKEND_URL_BASE + `/finance-units/${deletingReportId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -334,40 +388,73 @@ export default function ReportsPage() {
       }).then(res => {
         if(res.status === 200) {
           navigate(0);
+        } else {
+          setDeleteAFinanceUnitLoading(false);
+        }
+      })
+    }
+
+    const onEditAFinanceUnit = (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      setEditAFinanceUnitLoading(true);
+      fetch(BACKEND_URL_BASE + `/finance-units/${editingReportId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + Cookies.get('token')
+        },
+        body: JSON.stringify({
+          description: editedDescription,
+          money: editedMoney,
+          category: {
+            id: editedCategory
+          },
+          bill: {
+            id: billId
+          },
+          timestamp: editedDate,
+          isProfit: editedIsProfit,
+          creator: {
+            id: JSON.parse(localStorage.getItem('user')!).id
+          }
+        })
+        }
+      ).then(res => {
+        if(res.status === 200) {
+          navigate(0);
+        } else {
+          setEditAFinanceUnitLoading(false);
         }
       })
     }
 
     return (
-        <div className="flex flex-col h-full p-4">
-          <main className="flex-1 bg-muted/40 pt-4 px-6">
-            <div className="grid gap-6">
-              <div className="grid md:grid-cols-3 gap-6">
+        <div className="flex flex-col h-full p-4 w-full">
+          <main className="flex-1 bg-muted/40 pt-4 px-6 w-full">
+            <div className="grid gap-6 w-full">
+              <div className="gap-6 grid md:grid-cols-3 sm:grid-cols-1 ">
                 <Card>
                   <CardHeader>
                     <CardDescription>Total Income</CardDescription>
                     <CardTitle>{formatter.format(bill?.totalIncome)}</CardTitle>
                   </CardHeader>
-                  <CardContent></CardContent>
                 </Card>
                 <Card>
                   <CardHeader>
                     <CardDescription>Total Expenses</CardDescription>
                     <CardTitle>{formatter.format(bill?.totalExpenses)}</CardTitle>
                   </CardHeader>
-                  <CardContent></CardContent>
                 </Card>
                 <Card>
                   <CardHeader>
                     <CardDescription>Net Profit</CardDescription>
                     <CardTitle className={bill?.totalIncome - bill?.totalExpenses < 0 ? "text-red-700" : "text-green-500"}>{formatter.format(bill?.totalMoney)}</CardTitle>
                   </CardHeader>
-                  <CardContent></CardContent>
                 </Card>
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold">Finance Reports</h2>
+                  <h2 className="text-lg sm:hidden font-semibold">Finance Reports</h2>
                 </div>
                 <div className="grid gap-2 grid-flow-col">
                   <Button onClick={() => setIsBillInfoModalOpen(true)}>
@@ -381,12 +468,12 @@ export default function ReportsPage() {
                 </div>
               </div>
               <div className="grid gap-4">
-                <div className="flex items-center gap-4">
+                <div className="w-fit grid justify-items-start justify-start gap-4 sm:grid-cols-1 md:grid-cols-3">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" className="w-[200px] justify-start">
                         <CalendarClockIcon className="h-4 w-4 mr-2" />
-                        <span>{filtrationDate == undefined ? "from - to" : (makeDate(filtrationDate?.from) + " - " + (filtrationDate?.to == null ? "to" : makeDate(filtrationDate?.to)))}</span>
+                        <span>{filtrationDate == undefined ? "from - to" : (makeDateShort(filtrationDate?.from) + " - " + (filtrationDate?.to == null ? "to" : makeDateShort(filtrationDate?.to)))}</span>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="w-[300px]">
@@ -450,7 +537,7 @@ export default function ReportsPage() {
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="category">Category</Label>
-                    <Select onValueChange={(value) => setCreatedCategory(value)}>
+                    <Select onValueChange={(value) => setCreatedCategory(value)} value={createdCategory}>
                       <SelectTrigger id="category">
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
@@ -474,7 +561,7 @@ export default function ReportsPage() {
                     <Button variant="outline" onClick={() => setIsModalOpen(false)}>
                       Cancel
                     </Button>
-                    <Button type="submit">Save Report</Button>
+                    <Button type="submit" disabled={createAFinanceUnitLoading}>Save Report</Button>
                   </div>
               </form>
             </DialogContent>
@@ -498,6 +585,55 @@ export default function ReportsPage() {
                 <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>Close</Button>
                 <Button className="bg-red-500" onClick={deleteReport}>delete</Button>
               </div>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+            <DialogContent>
+              <form onSubmit={onEditAFinanceUnit}>
+                <div className="flex flex-col gap-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="date">Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-start font-normal">
+                          <CalendarClockIcon className="h-4 w-4 mr-2" />
+                          <span>{editedDate ? editedDate.toLocaleDateString() : 'Select date'}</span>
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={editedDate} onSelect={setEditedDate} disabled={(date) => date > new Date() || date < new Date("1900-01-01")}/>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="category">Category</Label>
+                    <Select onValueChange={(value) => setEditedCategory(value)} value={editedCategory}>
+                      <SelectTrigger id="category">
+                        <SelectValue placeholder="Select category"/>
+                      </SelectTrigger>
+                      {renderSelectCategories()}
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="amount">Amount</Label>
+                    <Input id="amount" type="number" placeholder="0.00" value={editedMoney} onChange={(e) => setEditedMoney(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea id="description" placeholder="Provide details..." value={editedDescription} onChange={(e) => setEditedDescription(e.target.value)} />
+                  </div>
+                  <div className="flex align-middle">
+                    <Label className="mr-2" htmlFor="isProfit">Is profit</Label>
+                    <Checkbox className=" z-50" checked={editedIsProfit} onCheckedChange={() => setEditedIsProfit(!editedIsProfit)}/>
+                  </div>
+                </div>
+                  <div className="mt-5 flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit">Save Report</Button>
+                  </div>
+              </form>
             </DialogContent>
           </Dialog>
           <Pagination>
