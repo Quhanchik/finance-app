@@ -1,5 +1,5 @@
 <h1>Financial App</h1>
-<p>this app is for tracing a financial state. In the app you can multiple bills that you can lead with others</p>
+<p>this app is for tracing a financial state. In the app you have multiple bills that you can lead with others</p>
 <h2>Tech stack:</h2>
 <ul>
   <li>Spring boot 3</li>
@@ -15,7 +15,7 @@
   <li>implementing filtering with specification api and pagination</li>
   <li>basic security and cors configuration</li>
   <li>writen rest endpoints</li>
-  <li>basic docer and docker compose configurations</li>
+  <li>basic docker and docker compose configurations</li>
 </ul>
 <h2>How to run?:</h2>
 <p>to run this program you need to install <a href="https://www.docker.com/">docker</a> on your local computer, then copy this project to your pc. Open the terminal in the root of the project and simpli type <b>docker-compose up</b> and there it is!</p>
