@@ -2,10 +2,7 @@ package kz.quhan.finance_app.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import org.hibernate.annotations.Fetch;
 
 import java.util.List;
@@ -13,9 +10,10 @@ import java.util.List;
 @Getter
 @Setter
 @Entity
+@Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "t_bill", schema = "finance_app")
+@Table(name = "t_bill")
 public class Bill {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

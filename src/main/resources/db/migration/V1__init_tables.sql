@@ -1,4 +1,4 @@
-CREATE SCHEMA IF NOT EXISTS finance_app;
+
 
 create table t_user
 (

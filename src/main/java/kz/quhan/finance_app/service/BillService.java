@@ -15,9 +15,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -67,17 +70,14 @@ public class BillService {
         return billRepository.findAllById(ids);
     }
 
-    public Bill create(Bill bill) {
-        System.out.println(bill.getName());
+    public Bill create(Bill bill, UserDetails userDetails) {
         Optional<Bill> billByName = billRepository.getBillByName(bill.getName());
 
         if(billByName.isPresent()) {
             throw new BillException("bill with this name is already exist");
         }
 
-        var context = SecurityContextHolder.getContext().getAuthentication();
-
-        AppUser creator = appUserService.getAppUserByLogin(context.getName());
+        AppUser creator = appUserService.getAppUserByLogin(userDetails.getUsername());
 
         List<AppUser> members = new ArrayList<>();
         members.add(creator);

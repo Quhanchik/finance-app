@@ -7,7 +7,7 @@ import lombok.*;
 import java.util.Date;
 
 @Entity
-@Table(name = "t_finance_unit", schema = "finance_app")
+@Table(name = "t_finance_unit")
 @Getter
 @Setter
 @AllArgsConstructor

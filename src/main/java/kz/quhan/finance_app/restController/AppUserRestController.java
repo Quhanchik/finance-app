@@ -14,6 +14,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import kz.quhan.finance_app.service.AppUserService;
@@ -34,8 +36,8 @@ public class AppUserRestController {
     private final AppUserMapper appUserMapper;
 
     @GetMapping("/me")
-    public ResponseEntity<AppUserDTO> getMe(Principal principal) {
-        AppUser appUser = appUserService.getAppUserByLogin(principal.getName());
+    public ResponseEntity<AppUserDTO> getMe(@AuthenticationPrincipal UserDetails userDetails) {
+        AppUser appUser = appUserService.getAppUserByLogin(userDetails.getUsername());
 
         AppUserDTO appUserDTO = appUserMapper.toDTO(appUser);
 
